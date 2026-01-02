@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tweet Dashboard</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #15202b;
+      color: #fff;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .container {
+      background: #192734;
+      border-radius: 16px;
+      padding: 32px;
+      width: 100%;
+      max-width: 500px;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.3);
+    }
+    h1 {
+      font-size: 24px;
+      margin-bottom: 24px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .twitter-icon {
+      width: 32px;
+      height: 32px;
+      fill: #1da1f2;
+    }
+    textarea {
+      width: 100%;
+      height: 120px;
+      background: #253341;
+      border: 1px solid #38444d;
+      border-radius: 12px;
+      padding: 16px;
+      color: #fff;
+      font-size: 16px;
+      resize: none;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    textarea:focus {
+      border-color: #1da1f2;
+    }
+    .footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 16px;
+    }
+    .char-count {
+      font-size: 14px;
+      color: #8899a6;
+    }
+    .char-count.warning { color: #ffad1f; }
+    .char-count.danger { color: #e0245e; }
+    button {
+      background: #1da1f2;
+      color: #fff;
+      border: none;
+      border-radius: 9999px;
+      padding: 12px 24px;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    button:hover { background: #1a91da; }
+    button:disabled {
+      background: #38444d;
+      cursor: not-allowed;
+    }
+    .status {
+      margin-top: 16px;
+      padding: 12px;
+      border-radius: 8px;
+      font-size: 14px;
+      display: none;
+    }
+    .status.success {
+      background: rgba(0, 186, 124, 0.2);
+      color: #00ba7c;
+      display: block;
+    }
+    .status.error {
+      background: rgba(224, 36, 94, 0.2);
+      color: #e0245e;
+      display: block;
+    }
+    .status a {
+      color: #1da1f2;
+      text-decoration: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>
+      <svg class="twitter-icon" viewBox="0 0 24 24">
+        <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+      </svg>
+      Tweet Dashboard
+    </h1>
+    
+    <textarea id="tweetText" placeholder="What's happening?"></textarea>
+    
+    <div class="footer">
+      <span class="char-count" id="charCount">0/280</span>
+      <button id="tweetBtn">Post</button>
+    </div>
+    
+    <div class="status" id="status"></div>
+  </div>
+
+  <script>
+    const textarea = document.getElementById('tweetText');
+    const charCount = document.getElementById('charCount');
+    const tweetBtn = document.getElementById('tweetBtn');
+    const status = document.getElementById('status');
+
+    // UPDATE THIS to your deployed Vercel URL
+    const API_URL = '/api/tweet';
+
+    textarea.addEventListener('input', () => {
+      const len = textarea.value.length;
+      charCount.textContent = `${len}/280`;
+      charCount.className = 'char-count';
+      if (len > 260) charCount.classList.add('warning');
+      if (len > 280) charCount.classList.add('danger');
+      tweetBtn.disabled = len === 0 || len > 280;
+    });
+
+    tweetBtn.addEventListener('click', async () => {
+      const text = textarea.value.trim();
+      if (!text) return;
+
+      tweetBtn.disabled = true;
+      tweetBtn.textContent = 'Posting...';
+      status.className = 'status';
+
+      try {
+        const res = await fetch(API_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text })
+        });
+
+        const data = await res.json();
+
+        if (res.ok) {
+          const tweetId = data.tweet?.data?.id;
+          status.className = 'status success';
+          status.innerHTML = tweetId 
+            ? `Tweet posted! <a href="https://twitter.com/i/status/${tweetId}" target="_blank">View tweet →</a>`
+            : 'Tweet posted successfully!';
+          textarea.value = '';
+          charCount.textContent = '0/280';
+        } else {
+          throw new Error(data.error?.detail || data.error?.title || 'Failed to post tweet');
+        }
+      } catch (err) {
+        status.className = 'status error';
+        status.textContent = err.message;
+      } finally {
+        tweetBtn.disabled = false;
+        tweetBtn.textContent = 'Post';
+      }
+    });
+
+    // Cmd/Ctrl + Enter to post
+    textarea.addEventListener('keydown', (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+        tweetBtn.click();
+      }
+    });
+  </script>
+</body>
+</html>
